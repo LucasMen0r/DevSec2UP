@@ -71,7 +71,7 @@ Para configurar facilmente a Autenticação em Dois Fatores (2FA) com aplicativo
 Clone o repositório:  
 
 ```bash
-git clone https://github.com/tatilimongi/GerenciadorSenhaSegura.git  
+git clone https://github.com/LucasMen0r/DevSec2UP.git  
 cd GerenciadorSenhaSegura  
 ```  
 
