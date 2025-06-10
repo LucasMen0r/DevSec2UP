@@ -1,8 +1,9 @@
 import model.Credential;
-import servico.AuthService;
-import servico.CredenciasiArmazenar;
-import servico.GerenciadorCredenciais;
+import service.AuthService;
+import service.CredentialStorage;
+import service.CredentialManager;
 import utils.InputSanitizer;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -14,50 +15,53 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 public class App {
+
     /**
-     * Main entry point of the Secure Password Manager.
-     * 
-     * Handles authentication and interacts with the user via the command-line interface.
+     * Ponto de entrada principal do Gerenciador de Senhas Seguro.
+     * Realiza autenticação e interage com o usuário via interface de linha de comando.
      *
-     * @param args Command-line arguments (currently unused).
+     * @param args Argumentos de linha de comando (atualmente não utilizados).
      */
     public static void main(String[] args) {
-        Scanner ler = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in);
 
         try {
-            new AuthService(ler);
+            new AuthService(scanner);
         } catch (Exception e) {
-            System.err.println("Authentication failed: " + e.getMessage());
+            System.err.println("Falha na autenticação: " + e.getMessage());
             return;
         }
+
         List<Credential> credentials;
         try {
-            credentials = CredenciasiArmazenar.loadCredentials();
+            credentials = CredentialStorage.loadCredentials();
         } catch (Exception e) {
-            System.err.println("Failed to load credentials: " + e.getMessage());
+            System.err.println("Falha ao carregar as credenciais: " + e.getMessage());
             return;
         }
-        GerenciadorCredenciais manager = new GerenciadorCredenciais(credentials);
+
+        CredentialManager manager = new CredentialManager(credentials);
         manager.showMenu();
     }
+
     /**
-     * Checks if a password hash suffix has been found in known data breaches
-     * using the Have I Been Pwned (HIBP) API.
-     * The API implements k-anonymity, and only the SHA-1 hash prefix
-     * is sent for checking.
+     * Verifica se um sufixo de hash de senha foi encontrado em vazamentos conhecidos,
+     * usando a API Have I Been Pwned (HIBP).
+     * A API implementa k-anonimato, enviando apenas o prefixo do hash SHA-1 para verificação.
      *
-     * @param prefix The first 5 characters of the SHA-1 hash of the password.
-     * @param suffix The remaining characters of the SHA-1 hash of the password.
-     * @return {@code true} if the suffix was found in breaches; {@code false} otherwise.
-     * @throws Exception If validation or connection fails.
+     * @param prefix Os primeiros 5 caracteres do hash SHA-1 da senha.
+     * @param suffix Os caracteres restantes do hash SHA-1 da senha.
+     * @return {@code true} se o sufixo foi encontrado em vazamentos; {@code false} caso contrário.
+     * @throws Exception Se a validação ou a conexão falhar.
      */
     static boolean checkPwned(String prefix, String suffix) throws Exception {
         try {
             prefix = InputSanitizer.sanitize(prefix, 5, false);
             suffix = InputSanitizer.sanitize(suffix, 100, false);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Input validation failed: " + e.getMessage());
+            throw new IllegalArgumentException("Falha na validação da entrada: " + e.getMessage());
         }
+
         HttpURLConnection conn = getHttpURLConnection(prefix, suffix);
 
         try (BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
@@ -71,24 +75,26 @@ public class App {
         }
         return false;
     }
+
     /**
-     * Configures an HTTP connection to query the HIBP API for password breach information.
+     * Configura uma conexão HTTP para consultar a API HIBP sobre informações de vazamento de senha.
      *
-     * @param prefix The first 5 characters of the SHA-1 hash of the password.
-     * @param suffix The remaining characters of the SHA-1 hash (used for validation only).
-     * @return A configured {@link HttpURLConnection} object ready for querying the API.
-     * @throws URISyntaxException If the constructed URI is invalid.
-     * @throws IOException If the connection fails.
+     * @param prefix Os primeiros 5 caracteres do hash SHA-1 da senha.
+     * @param suffix Os caracteres restantes do hash SHA-1 (usado apenas para validação).
+     * @return Um objeto {@link HttpURLConnection} configurado e pronto para consultar a API.
+     * @throws URISyntaxException Se o URI construído for inválido.
+     * @throws IOException Se a conexão falhar.
      */
     private static HttpURLConnection getHttpURLConnection(String prefix, String suffix)
             throws URISyntaxException, IOException {
 
         if (!prefix.matches("[A-Fa-f0-9]{5}")) {
-            throw new IllegalArgumentException("Prefix must contain exactly 5 hexadecimal characters.");
+            throw new IllegalArgumentException("O prefixo deve conter exatamente 5 caracteres hexadecimais.");
         }
         if (!suffix.matches("[A-Fa-f0-9]+")) {
-            throw new IllegalArgumentException("Suffix must contain only hexadecimal characters.");
+            throw new IllegalArgumentException("O sufixo deve conter apenas caracteres hexadecimais.");
         }
+
         URI uri = new URI("https", "api.pwnedpasswords.com", "/range/" + prefix, null);
         URL url = uri.toURL();
 

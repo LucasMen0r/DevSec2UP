@@ -1,46 +1,35 @@
 package utils;
+
+import service.PasswordBreachChecker;
 import java.security.SecureRandom;
-import servico.ChecagemVazamento;
 
 public class PasswordGenerator {
     private static final String UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
     private static final String LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
-
     private static final String NUMBERS = "0123456789";
-
     private static final String SYMBOLS = "!@#$%&*()-_=+[]{}";
-
     private static final SecureRandom random = new SecureRandom();
+
     /**
-     * Generates a strong password based on user preferences.
+     * Gera uma senha forte com base nas preferências do usuário.
      *
-     * @param length           The length of the generated password.
-     * 
-     * @param includeUppercase Whether to include uppercase letters.
-     * 
-     * @param includeLowercase Whether to include lowercase letters.
-     * 
-     * @param includeNumbers   Whether to include numeric digits.
-     * 
-     * @param includeSymbols   Whether to include special characters.
-     * 
-     * @return A randomly generated password as a String.
+     * @param length           Comprimento desejado para a senha.
+     * @param includeUppercase Incluir letras maiúsculas?
+     * @param includeLowercase Incluir letras minúsculas?
+     * @param includeNumbers   Incluir números?
+     * @param includeSymbols   Incluir símbolos especiais?
+     * @return Uma senha gerada aleatoriamente em formato de String.
      */
     public static String generate(int length, boolean includeUppercase, boolean includeLowercase,
                                   boolean includeNumbers, boolean includeSymbols) {
         StringBuilder characterPool = new StringBuilder();
-
         if (includeUppercase) characterPool.append(UPPERCASE);
-
         if (includeLowercase) characterPool.append(LOWERCASE);
-
         if (includeNumbers) characterPool.append(NUMBERS);
-
         if (includeSymbols) characterPool.append(SYMBOLS);
 
         if (characterPool.isEmpty() || length <= 0) {
-            throw new IllegalArgumentException("Invalid parameters for password generation.");
+            throw new IllegalArgumentException("Parâmetros inválidos para geração da senha.");
         }
 
         String password;
@@ -53,13 +42,14 @@ public class PasswordGenerator {
             }
             password = passwordBuilder.toString();
             
-            // Check with PasswordBreachChecker
-            breachCount = ChecagemVazamento.checkPassword(password);
+            // Verifica se a senha já foi exposta em vazamentos
+            breachCount = PasswordBreachChecker.checkPassword(password);
 
             if (breachCount > 0) {
-                System.out.printf("Generated password found in %d breach(es). Regenerating a safer password...%n", breachCount);
+                System.out.printf("A senha gerada já apareceu em %d vazamento(s). Gerando uma senha mais segura...%n", breachCount);
             }
-        } while (breachCount > 0); // Regenerate if the password is compromised
+        } while (breachCount > 0); // Gera outra senha caso a atual já tenha sido comprometida
+
         return password;
     }
 }
