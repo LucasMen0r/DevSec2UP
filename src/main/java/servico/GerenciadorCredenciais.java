@@ -9,7 +9,6 @@ import java.awt.Toolkit;
 import java.io.IOException;
 import java.util.List;
 import java.util.Scanner;
-
 /**
  * Lida com a interação do usuário para gerenciar credenciais, incluindo listar, adicionar, remover, pesquisar, descriptografar e copiar senhas.
  */
@@ -77,18 +76,18 @@ public class GerenciadorCredenciais {
     String choice;
 
     try {
-        System.out.print("Enter service name: ");
+        System.out.print("Entre com o nome do serviço: ");
         service = InputSanitizer.sanitize(ler.nextLine(), 50, false);
 
-        System.out.print("Enter username: ");
+        System.out.print("Entre com o nome do usuário: ");
         username = InputSanitizer.sanitize(ler.nextLine(), 50, false);
 
-        System.out.print("Generate strong password? (y/n): ");
+        System.out.print("Gerar uma senha forte? (s/n): ");
         choice = InputSanitizer.sanitize(ler.nextLine().toLowerCase(), 1, false);
 
         // Input validation for user choice
         while (!choice.equals("y") && !choice.equals("n")) {
-            System.out.print("Invalid input. Please enter 'y' for yes or 'n' for no: ");
+            System.out.print("Input inválido. Por favor tecle 's' para sim ou 'n' para não: ");
             choice = InputSanitizer.sanitize(ler.nextLine().toLowerCase(), 1, false);
         }
     } catch (IllegalArgumentException ex) {
@@ -101,9 +100,12 @@ public class GerenciadorCredenciais {
         // Allow the user to define the password length and characteristics
         int passwordLength = askPasswordLength();
         boolean includeUppercase = askIncludeOption("Inclir letras em caixa alta?");
+
         boolean includeLowercase = askIncludeOption("Inclir letras em caixa baixa??");
-        boolean includeNumbers = askIncludeOption("Include numbers?");
-        boolean includeSymbols = askIncludeOption("Include symbols?");
+
+        boolean includeNumbers = askIncludeOption("Incluir números?");
+
+        boolean includeSymbols = askIncludeOption("Incluir símbolos?");
 
         // Validate if at least one option is selected
         if (!includeUppercase && !includeLowercase && !includeNumbers && !includeSymbols) {

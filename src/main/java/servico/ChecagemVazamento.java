@@ -27,7 +27,7 @@ public class ChecagemVazamento {
             String prefix = sha1Hash.substring(0, 5);
             String suffix = sha1Hash.substring(5);
 
-            // Passo 2: Query the API with the prefix
+            // Passo 2: Query da API com o prefixo
             URI uri = new URI("https", "api.pwnedpasswords.com", "/range/" + prefix, null);
             URL url = uri.toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();

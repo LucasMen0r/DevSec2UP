@@ -16,6 +16,7 @@ import java.io.InputStreamReader;
 public class App {
     /**
      * Main entry point of the Secure Password Manager.
+     * 
      * Handles authentication and interacts with the user via the command-line interface.
      *
      * @param args Command-line arguments (currently unused).
