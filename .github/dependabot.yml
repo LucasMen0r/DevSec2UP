@@ -1,0 +1,8 @@
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"                # raiz do seu projeto
+    schedule:
+      interval: "weekly"         # verificação semanal
+    # Impede PRs de versão; mantém apenas atualizações de segurança
+    open-pull-requests-limit: 0
