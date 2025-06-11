@@ -26,14 +26,7 @@ git clone https://github.com/LucasMen0r/DevSec2UP
 cd DevSec2UP
 ```
 
-2. Compile o projeto:
-
-```bash
-mvn clean install
-mvn exec:java -Dexec.mainClass="App"
-```
-
-3. Execute o programa:
+2. Execute o programa:
 
 ```bash
 java -cp bin App
