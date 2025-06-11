@@ -23,12 +23,14 @@ Este é um gerenciador de senhas simples e seguro desenvolvido em Java. O projet
 
 ```bash
 git clone https://github.com/LucasMen0r/DevSec2UP
+cd DevSec2UP
 ```
 
 2. Compile o projeto:
 
 ```bash
-javac -d bin src/**/*.java
+mvn clean install
+mvn exec:java -Dexec.mainClass="App"
 ```
 
 3. Execute o programa:
