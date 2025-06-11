@@ -1,22 +1,21 @@
 package model;
 
 /**
- * Represents a saved user credential for a specific service.
+ * Representa uma credencial de usuário salva para um serviço específico.
  */
 public record Credential(String serviceName, String username, String encryptedPassword) {
 	/**
-	 * Constructs a new Credential.
+	 * Constrói uma nova Credential.
 	 *
-	 * @param serviceName       the name of the service (e.g., "Gmail")
-	 * @param username          the username associated with the service
-	 * @param encryptedPassword the password, already encrypted
+	 * @param serviceName       o nome do serviço (ex.: "Gmail")
+	 * @param username          o nome de usuário associado ao serviço
+	 * @param encryptedPassword a senha, já criptografada
 	 */
 	public Credential {
 	}
 
-
 	@Override
 	public String toString() {
-		return "Service: " + serviceName + ", Username: " + username;
+		return "Serviço: " + serviceName + ", Usuário: " + username;
 	}
 }

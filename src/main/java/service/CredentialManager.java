@@ -3,257 +3,315 @@ package service;
 import model.Credential;
 import utils.InputSanitizer;
 import utils.PasswordGenerator;
-import utils.PasswordStrengthEvaluator;
 import org.mindrot.jbcrypt.BCrypt;
-
-import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.Toolkit;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.stream.IntStream;
+import java.util.List;
+import java.util.Scanner;
 
+/**
+ * Gerencia a interação do usuário para administrar credenciais, incluindo
+ * listar, adicionar, remover, buscar, descriptografar e copiar senhas.
+ */
 public class CredentialManager {
+	private final List<Credential> credentials;
+	private final Scanner scanner = new Scanner(System.in);
 
-    private final List<Credential> credentials;
-    private final Scanner scanner;
+	/**
+	 * Inicializa o gerenciador de credenciais com uma lista de credenciais.
+	 *
+	 * @param credentials As credenciais para gerenciar.
+	 */
+	public CredentialManager(List<Credential> credentials) {
+		this.credentials = credentials;
+	}
 
-    public CredentialManager(List<Credential> credentials) {
-        this.credentials = credentials;
-        this.scanner = new Scanner(System.in);
-    }
+	/**
+	 * Exibe o menu interativo para gerenciar credenciais.
+	 */
+	public void showMenu() {
+		while (true) {
+			System.out.println("\n=== Gerenciador de Credenciais ===");
+			System.out.println("1. Listar todas as credenciais");
+			System.out.println("2. Adicionar nova credencial");
+			System.out.println("3. Remover uma credencial");
+			System.out.println("4. Copiar senha para a área de transferência");
+			System.out.println("5. Verificar se alguma senha foi comprometida");
+			System.out.println("6. Sair");
+			System.out.print("Escolha uma opção: ");
+			String option = scanner.nextLine();
 
-    public void showMenu() {
-        Map<String, Runnable> actions = new HashMap<>();
-        actions.put("1", this::listCredentials);
-        actions.put("2", this::addCredential);
-        actions.put("3", this::removeCredential);
-        actions.put("4", this::copyPasswordToClipboard);
-        actions.put("5", this::checkCompromisedPasswords);
-        actions.put("6", this::saveAndExit);
+			switch (option) {
+				case "1" -> listCredentials();
+				case "2" -> addCredential();
+				case "3" -> removeCredential();
+				case "4" -> copyPasswordToClipboard();
+				case "5" -> checkCompromisedPasswords();
+				case "6" -> {
+					saveAndExit();
+					return;
+				}
+				default -> System.out.println("Opção inválida. Tente novamente.");
+			}
+		}
+	}
 
-        while (true) {
-            System.out.println("\n=== Gerenciador de Credenciais ===");
-            System.out.println("1. Listar todas as credenciais");
-            System.out.println("2. Adicionar nova credencial");
-            System.out.println("3. Remover uma credencial");
-            System.out.println("4. Copiar senha para a área de transferência");
-            System.out.println("5. Verificar senhas comprometidas");
-            System.out.println("6. Sair");
-            System.out.print("Escolha uma opção: ");
+	/**
+	 * Lista todas as credenciais armazenadas com índice, nome do serviço e nome de usuário.
+	 */
+	private void listCredentials() {
+		if (credentials.isEmpty()) {
+			System.out.println("Nenhuma credencial armazenada.");
+			return;
+		}
+		System.out.println("Credenciais armazenadas:");
+		for (int i = 0; i < credentials.size(); i++) {
+			Credential c = credentials.get(i);
+			System.out.printf("%d. Serviço: %s | Usuário: %s%n", i + 1, c.serviceName(), c.username());
+		}
+	}
 
-            String option = scanner.nextLine();
-            Runnable action = actions.get(option);
-            if (action != null) {
-                action.run();
-                if ("6".equals(option)) break;
-            } else {
-                System.out.println("Opção inválida. Tente novamente.");
-            }
-        }
-    }
+	/**
+	 * Adiciona uma nova credencial, com opção de gerar uma senha segura.
+	 */
+	void addCredential() {
+		String service;
+		String username;
+		String choice;
 
-    private void listCredentials() {
-        if (credentials.isEmpty()) {
-            System.out.println("Nenhuma credencial armazenada.");
-            return;
-        }
+		try {
+			System.out.print("Digite o nome do serviço: ");
+			service = InputSanitizer.sanitize(scanner.nextLine(), 50, false);
 
-        IntStream.range(0, credentials.size())
-                .mapToObj(i -> String.format("%d. Serviço: %s | Usuário: %s", i + 1,
-                        credentials.get(i).serviceName(), credentials.get(i).username()))
-                .forEach(System.out::println);
-    }
+			System.out.print("Digite o nome de usuário: ");
+			username = InputSanitizer.sanitize(scanner.nextLine(), 50, false);
 
-    private void addCredential() {
-        try {
-            String service = prompt("Digite o nome do serviço:", 50, false);
-            String username = prompt("Digite o nome de usuário:", 50, false);
-            String option = promptYesNo("Gerar uma senha forte? (s/n):");
+			System.out.print("Gerar senha forte? (s/n): ");
+			choice = InputSanitizer.sanitize(scanner.nextLine().toLowerCase(), 1, false);
 
-            String password;
-            if (option.equals("s")) {
-                password = generateCustomPassword();
-            } else {
-                while (true) {
-                    password = prompt("Digite a senha:", 64, false);
-                    if (PasswordStrengthEvaluator.isStrong(password)) {
-                        break;
-                    } else {
-                        System.out.println("⚠️  A senha fornecida é fraca. Tente novamente com uma senha mais segura.");
-                    }
-                }
-            }
+			// Validação da escolha do usuário
+			while (!choice.equals("s") && !choice.equals("n")) {
+				System.out.print("Entrada inválida. Digite 's' para sim ou 'n' para não: ");
+				choice = InputSanitizer.sanitize(scanner.nextLine().toLowerCase(), 1, false);
+			}
+		} catch (IllegalArgumentException ex) {
+			System.out.println("Entrada inválida. " + ex.getMessage());
+			return;
+		}
 
-            String encrypted = EncryptionService.encrypt(password);
-            credentials.add(new Credential(service, username, encrypted));
-            System.out.println("Credencial adicionada com sucesso.");
-        } catch (Exception e) {
-            System.err.println("Erro ao adicionar credencial: " + e.getMessage());
-        }
-    }
+		// Define a senha com base na escolha do usuário
+		String password;
+		if (choice.equals("s")) {
+			int passwordLength = askPasswordLength();
+			boolean includeUppercase = askIncludeOption("Incluir letras maiúsculas?");
+			boolean includeLowercase = askIncludeOption("Incluir letras minúsculas?");
+			boolean includeNumbers = askIncludeOption("Incluir números?");
+			boolean includeSymbols = askIncludeOption("Incluir símbolos?");
 
-    private String generateCustomPassword() {
-        int length = askPasswordLength();
-        boolean upper = askInclude("Incluir letras maiúsculas?");
-        boolean lower = askInclude("Incluir letras minúsculas?");
-        boolean digits = askInclude("Incluir números?");
-        boolean symbols = askInclude("Incluir símbolos?");
+			if (!includeUppercase && !includeLowercase && !includeNumbers && !includeSymbols) {
+				System.out.println("Erro: Pelo menos um tipo de caractere deve ser selecionado.");
+				return;
+			}
 
-        if (!(upper || lower || digits || symbols)) {
-            throw new IllegalArgumentException("Pelo menos um tipo de caractere deve ser selecionado.");
-        }
+			password = PasswordGenerator.generate(passwordLength, includeUppercase, includeLowercase, includeNumbers, includeSymbols);
 
-        return PasswordGenerator.generate(length, upper, lower, digits, symbols);
-    }
+		} else {
+			System.out.print("Digite a senha: ");
+			try {
+				password = InputSanitizer.sanitize(scanner.nextLine(), 64, false);
+			} catch (IllegalArgumentException ex) {
+				System.out.println("Senha inválida. " + ex.getMessage());
+				return;
+			}
+		}
 
-    private void removeCredential() {
-        listCredentials();
-        if (credentials.isEmpty()) return;
+		// Criptografa e armazena a nova credencial
+		try {
+			String encryptedPassword = EncryptionService.encrypt(password);
+			credentials.add(new Credential(service, username, encryptedPassword));
+			System.out.println("Credencial adicionada com sucesso.");
+		} catch (Exception e) {
+			System.err.println("Erro ao criptografar a senha: " + e.getMessage());
+		}
+	}
 
-        int index = getIndex("Digite o número da credencial para remover:") - 1;
-        if (isValidIndex(index)) {
-            Credential removed = credentials.remove(index);
-            System.out.println("Removido: " + removed.serviceName());
-        } else {
-            System.out.println("Índice inválido.");
-        }
-    }
+	/**
+	 * Pergunta ao usuário o tamanho da senha e valida a entrada.
+	 *
+	 * @return O tamanho da senha.
+	 */
+	private int askPasswordLength() {
+		int length = 0;
+		while (length <= 0) {
+			try {
+				System.out.print("Digite o tamanho da senha (mínimo 8): ");
+				length = Integer.parseInt(scanner.nextLine());
+				if (length < 8) {
+					System.out.println("A senha deve ter no mínimo 8 caracteres.");
+					length = 0;
+				}
+			} catch (NumberFormatException e) {
+				System.out.println("Entrada inválida. Digite um número válido.");
+			}
+		}
+		return length;
+	}
 
-    private void copyPasswordToClipboard() {
-        if (credentials.isEmpty()) {
-            System.out.println("Nenhuma credencial armazenada.");
-            return;
-        }
+	/**
+	 * Pergunta se o usuário deseja incluir um conjunto específico de caracteres na senha.
+	 *
+	 * @param message A mensagem para exibir ao usuário.
+	 * @return True se o usuário deseja incluir, false caso contrário.
+	 */
+	private boolean askIncludeOption(String message) {
+		while (true) {
+			System.out.print(message + " (s/n): ");
+			String input = scanner.nextLine().toLowerCase();
+			if (input.equals("s")) {
+				return true;
+			} else if (input.equals("n")) {
+				return false;
+			} else {
+				System.out.println("Entrada inválida. Digite 's' para sim ou 'n' para não.");
+			}
+		}
+	}
 
-        listCredentials();
-        int index = getIndex("Digite o número da credencial para copiar a senha:") - 1;
-        if (!isValidIndex(index)) {
-            System.out.println("Índice inválido.");
-            return;
-        }
+	/**
+	 * Remove uma credencial da lista com base na entrada do usuário.
+	 */
+	void removeCredential() {
+		listCredentials();
+		if (credentials.isEmpty()) return;
 
-        System.out.print("Digite novamente a senha mestre para confirmar: ");
-        String inputPassword = scanner.nextLine().trim();
+		System.out.print("Digite o número da credencial que deseja remover: ");
+		int index = getIntInput() - 1;
 
-        Optional<String> storedHash = readMasterPasswordHash();
-        if (storedHash.isEmpty() || !BCrypt.checkpw(inputPassword, storedHash.get())) {
-            System.out.println("Senha mestre incorreta ou não configurada.");
-            return;
-        }
+		if (index >= 0 && index < credentials.size()) {
+			Credential removed = credentials.remove(index);
+			System.out.println("Removido: " + removed.serviceName());
+		} else {
+			System.out.println("Índice inválido.");
+		}
+	}
 
-        try {
-            String decrypted = EncryptionService.decrypt(credentials.get(index).encryptedPassword());
-            copyToClipboard(decrypted);
-            System.out.printf("Senha para %s copiada para a área de transferência.%n",
-                    credentials.get(index).serviceName());
-        } catch (Exception e) {
-            System.err.println("Erro ao copiar senha: " + e.getMessage());
-        }
-    }
+	/**
+	 * Copia uma senha descriptografada para a área de transferência após confirmar a senha mestre.
+	 */
+	private void copyPasswordToClipboard() {
+		if (credentials.isEmpty()) {
+			System.out.println("Nenhuma credencial armazenada.");
+			return;
+		}
 
-    private void checkCompromisedPasswords() {
-        if (credentials.isEmpty()) {
-            System.out.println("Nenhuma credencial armazenada.");
-            return;
-        }
+		listCredentials();
+		System.out.print("Digite o número da credencial para copiar a senha: ");
+		int index = getIntInput() - 1;
 
-        boolean anyCompromised = false;
-        System.out.println("Verificando senhas comprometidas...");
+		if (index < 0 || index >= credentials.size()) {
+			System.out.println("Índice inválido.");
+			return;
+		}
 
-        for (Credential c : credentials) {
-            try {
-                String decrypted = EncryptionService.decrypt(c.encryptedPassword());
-                int count = PasswordBreachChecker.checkPassword(decrypted);
-                if (count > 0) {
-                    System.out.printf("⚠️  Serviço: '%s' | Usuário: '%s' - Apareceu em %d vazamentos.%n",
-                            c.serviceName(), c.username(), count);
-                    anyCompromised = true;
-                }
-            } catch (Exception e) {
-                System.err.printf("Erro com '%s': %s%n", c.serviceName(), e.getMessage());
-            }
-        }
+		System.out.print("Digite novamente a senha mestre para confirmar: ");
+		String inputPassword = scanner.nextLine().trim();
 
-        if (!anyCompromised) {
-            System.out.println("Nenhuma senha comprometida encontrada.");
-        }
-    }
+		try {
+			java.nio.file.Path passwordPath = java.nio.file.Paths.get("master_password.dat");
+			if (!java.nio.file.Files.exists(passwordPath)) {
+				System.out.println("Arquivo master_password.dat não encontrado. Configure sua senha mestre novamente.");
+				return;
+			}
 
-    private void saveAndExit() {
-        try {
-            CredentialStorage.saveCredentials(credentials);
-            System.out.println("Credenciais salvas. Encerrando...");
-        } catch (Exception e) {
-            System.err.println("Erro ao salvar as credenciais: " + e.getMessage());
-        }
-    }
+			String storedHash = java.nio.file.Files.readAllLines(passwordPath).getFirst();
+			if (!BCrypt.checkpw(inputPassword, storedHash)) {
+				System.out.println("Senha mestre incorreta. Acesso negado.");
+				return;
+			}
 
-    // ========== Métodos Utilitários ==========
+			Credential selected = credentials.get(index);
+			String decrypted = EncryptionService.decrypt(selected.encryptedPassword());
+			copyToClipboard(decrypted);
+			System.out.printf("Senha do serviço %s copiada para a área de transferência.%n", selected.serviceName());
+		} catch (IOException e) {
+			System.err.println("Erro ao ler master_password.dat: " + e.getMessage());
+		} catch (Exception e) {
+			System.err.println("Erro ao descriptografar a senha: " + e.getMessage());
+		}
+	}
 
-    private String prompt(String message, int maxLength, boolean numbersOnly) {
-        System.out.print(message + " ");
-        return InputSanitizer.sanitize(scanner.nextLine(), maxLength, numbersOnly);
-    }
+	/**
+	 * Copia uma string para a área de transferência do sistema.
+	 *
+	 * @param text O texto para copiar.
+	 */
+	private void copyToClipboard(String text) {
+		try {
+			StringSelection selection = new StringSelection(text);
+			Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+			clipboard.setContents(selection, null);
+		} catch (Exception e) {
+			System.err.println("Operação da área de transferência não suportada: " + e.getMessage());
+		}
+	}
 
-    private String promptYesNo(String message) {
-        while (true) {
-            System.out.print(message + " ");
-            String input = scanner.nextLine().toLowerCase();
-            if (input.equals("s") || input.equals("n")) return input;
-            System.out.println("Entrada inválida. Digite 's' ou 'n'.");
-        }
-    }
+	/**
+	 * Verifica todas as senhas armazenadas contra dados de vazamentos conhecidos.
+	 */
+	private void checkCompromisedPasswords() {
+		if (credentials.isEmpty()) {
+			System.out.println("Nenhuma credencial armazenada.");
+			return;
+		}
+		System.out.println("Verificando se há senhas comprometidas...");
+		boolean anyCompromised = false;
 
-    private boolean askInclude(String message) {
-        return promptYesNo(message + " (s/n):").equals("s");
-    }
+		for (Credential c : credentials) {
+			try {
+				String decrypted = EncryptionService.decrypt(c.encryptedPassword());
+				int count = PasswordBreachChecker.checkPassword(decrypted);
+				if (count > 0) {
+					System.out.printf(
+							"ATENÇÃO: A senha do serviço '%s' (usuário: %s) apareceu %d vez(es) em vazamentos!%n",
+							c.serviceName(), c.username(), count
+					);
+					anyCompromised = true;
+				}
+			} catch (Exception e) {
+				System.err.println("Erro ao verificar senha do serviço '" + c.serviceName() + "': " + e.getMessage());
+			}
+		}
 
-    private int askPasswordLength() {
-        while (true) {
-            System.out.print("Comprimento da senha (mínimo 8): ");
-            try {
-                int length = Integer.parseInt(scanner.nextLine());
-                if (length >= 8) return length;
-                System.out.println("A senha deve ter pelo menos 8 caracteres.");
-            } catch (NumberFormatException e) {
-                System.out.println("Digite um número válido.");
-            }
-        }
-    }
+		if (!anyCompromised) {
+			System.out.println("Nenhuma senha comprometida foi encontrada nas suas credenciais.");
+		}
+	}
 
-    private int getIndex(String message) {
-        System.out.print(message + " ");
-        try {
-            return Integer.parseInt(scanner.nextLine());
-        } catch (NumberFormatException e) {
-            return -1;
-        }
-    }
+	/**
+	 * Salva as credenciais e encerra a aplicação.
+	 */
+	private void saveAndExit() {
+		try {
+			CredentialStorage.saveCredentials(credentials);
+			System.out.println("Credenciais salvas. Saindo...");
+		} catch (Exception e) {
+			System.err.println("Erro ao salvar credenciais: " + e.getMessage());
+		}
+	}
 
-    private boolean isValidIndex(int index) {
-        return index >= 0 && index < credentials.size();
-    }
-
-    private Optional<String> readMasterPasswordHash() {
-        try {
-            Path path = Path.of("master_password.dat");
-            if (!Files.exists(path)) return Optional.empty();
-            return Optional.of(Files.readString(path).trim());
-        } catch (IOException e) {
-            System.err.println("Erro ao ler a senha mestre: " + e.getMessage());
-            return Optional.empty();
-        }
-    }
-
-    private void copyToClipboard(String text) {
-        try {
-            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-            clipboard.setContents(new StringSelection(text), null);
-        } catch (Exception e) {
-            System.err.println("Erro ao copiar para a área de transferência: " + e.getMessage());
-        }
-    }
+	/**
+	 * Lê e valida uma entrada inteira do usuário.
+	 *
+	 * @return Inteiro válido ou -1 se a entrada for inválida.
+	 */
+	private int getIntInput() {
+		try {
+			return Integer.parseInt(scanner.nextLine().trim());
+		} catch (NumberFormatException e) {
+			System.out.println("Entrada inválida. Digite um número.");
+			return -1;
+		}
+	}
 }

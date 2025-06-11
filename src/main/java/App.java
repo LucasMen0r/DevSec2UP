@@ -17,16 +17,16 @@ import java.io.InputStreamReader;
 public class App {
 
     /**
-     * Ponto de entrada principal do Secure Password Manager.
-     * Gerencia autenticação e interação com o usuário via CLI.
+     * Ponto de entrada principal do Gerenciador de Senhas Seguro.
+     * Realiza autenticação e interage com o usuário via interface de linha de comando.
      *
-     * @param args Argumentos da linha de comando (não utilizados).
+     * @param args Argumentos de linha de comando (atualmente não utilizados).
      */
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
         try {
-            new AuthService(scanner); // Autentica o usuário
+            new AuthService(scanner);
         } catch (Exception e) {
             System.err.println("Falha na autenticação: " + e.getMessage());
             return;
@@ -34,33 +34,32 @@ public class App {
 
         List<Credential> credentials;
         try {
-            credentials = CredentialStorage.loadCredentials(); // Carrega credenciais armazenadas
+            credentials = CredentialStorage.loadCredentials();
         } catch (Exception e) {
-            System.err.println("Falha ao carregar credenciais: " + e.getMessage());
+            System.err.println("Falha ao carregar as credenciais: " + e.getMessage());
             return;
         }
 
         CredentialManager manager = new CredentialManager(credentials);
-        manager.showMenu(); // Mostra o menu de gerenciamento de credenciais
+        manager.showMenu();
     }
 
     /**
-     * Verifica se o sufixo do hash SHA-1 da senha foi encontrado em vazamentos conhecidos,
-     * utilizando a API Have I Been Pwned (HIBP).
-     * A API usa k-anonimidade, enviando apenas o prefixo do hash para consulta.
+     * Verifica se um sufixo de hash de senha foi encontrado em vazamentos conhecidos,
+     * usando a API Have I Been Pwned (HIBP).
+     * A API implementa k-anonimato, enviando apenas o prefixo do hash SHA-1 para verificação.
      *
      * @param prefix Os primeiros 5 caracteres do hash SHA-1 da senha.
-     * @param suffix O restante do hash SHA-1 da senha.
+     * @param suffix Os caracteres restantes do hash SHA-1 da senha.
      * @return {@code true} se o sufixo foi encontrado em vazamentos; {@code false} caso contrário.
-     * @throws Exception Em caso de falha na validação ou conexão.
+     * @throws Exception Se a validação ou a conexão falhar.
      */
     static boolean checkPwned(String prefix, String suffix) throws Exception {
-        // Sanitiza os inputs para garantir segurança
         try {
             prefix = InputSanitizer.sanitize(prefix, 5, false);
             suffix = InputSanitizer.sanitize(suffix, 100, false);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Falha na validação de entrada: " + e.getMessage());
+            throw new IllegalArgumentException("Falha na validação da entrada: " + e.getMessage());
         }
 
         HttpURLConnection conn = getHttpURLConnection(prefix, suffix);
@@ -78,23 +77,22 @@ public class App {
     }
 
     /**
-     * Configura uma conexão HTTP para consultar a API HIBP sobre senhas vazadas.
+     * Configura uma conexão HTTP para consultar a API HIBP sobre informações de vazamento de senha.
      *
      * @param prefix Os primeiros 5 caracteres do hash SHA-1 da senha.
-     * @param suffix O restante do hash SHA-1 da senha (usado só para validação).
-     * @return Uma conexão HTTP configurada para consulta da API.
-     * @throws URISyntaxException Se a URI construída for inválida.
-     * @throws IOException Se falhar a conexão.
+     * @param suffix Os caracteres restantes do hash SHA-1 (usado apenas para validação).
+     * @return Um objeto {@link HttpURLConnection} configurado e pronto para consultar a API.
+     * @throws URISyntaxException Se o URI construído for inválido.
+     * @throws IOException Se a conexão falhar.
      */
     private static HttpURLConnection getHttpURLConnection(String prefix, String suffix)
             throws URISyntaxException, IOException {
 
-        // Validação rigorosa do prefixo e sufixo, aceitando só hexadecimais
         if (!prefix.matches("[A-Fa-f0-9]{5}")) {
-            throw new IllegalArgumentException("Prefixo deve conter exatamente 5 caracteres hexadecimais.");
+            throw new IllegalArgumentException("O prefixo deve conter exatamente 5 caracteres hexadecimais.");
         }
         if (!suffix.matches("[A-Fa-f0-9]+")) {
-            throw new IllegalArgumentException("Sufixo deve conter apenas caracteres hexadecimais.");
+            throw new IllegalArgumentException("O sufixo deve conter apenas caracteres hexadecimais.");
         }
 
         URI uri = new URI("https", "api.pwnedpasswords.com", "/range/" + prefix, null);
@@ -102,8 +100,8 @@ public class App {
 
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
-        conn.setConnectTimeout(5000); // Timeout de conexão
-        conn.setReadTimeout(5000);    // Timeout de leitura
+        conn.setConnectTimeout(5000);
+        conn.setReadTimeout(5000);
         return conn;
     }
 }
