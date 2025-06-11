@@ -11,30 +11,27 @@ import java.security.spec.KeySpec;
 import java.util.Base64;
 
 /**
- * EncryptionService fornece criptografia e descriptografia seguras de dados sensíveis usando AES-GCM.
+ * EncryptionService fornece criptografia e descriptografia segura de dados sensíveis usando AES-GCM.
  * A chave de criptografia é derivada da senha mestre do usuário e de um salt persistente usando PBKDF2.
- * A chave e o salt são mantidos apenas na memória durante a sessão e são limpos ao final da JVM.
+ * A chave e o salt permanecem apenas na memória durante a sessão e são limpos ao encerrar a JVM.
  *
  * Uso:
- * - Após a autenticação, chame setSessionKeyAndSalt(masterPassword, salt) para inicializar a chave de sessão.
- *   Observação: `setSessionKeyAndSalt` deve ser chamado antes de encrypt() ou decrypt(), para evitar erros.
+ * - Após a autenticação, chame setSessionKeyAndSalt(masterPassword, salt) para inicializar a chave da sessão.
+ *   Nota: `setSessionKeyAndSalt` deve ser chamado antes de encrypt() ou decrypt() para evitar erros.
  * - Use encrypt() e decrypt() para operações seguras com dados.
- * - O salt persistente é armazenado no arquivo encryption_salt.dat.
+ * - O salt persistente é gerenciado no arquivo encryption_salt.dat.
  *
- * Notas de Segurança:
- * - Chaves e salts são limpos da memória ao final da execução da JVM via shutdown hook.
- * - AES/GCM/NoPadding é usado para garantir criptografia autenticada.
+ * Notas de segurança:
+ * - Chaves e salts são limpos da memória quando a JVM é encerrada, via hook de desligamento.
+ * - AES/GCM/NoPadding é utilizado, garantindo criptografia autenticada.
  */
 public class EncryptionService {
 
 	private static String sessionKey = null;
 	private static String sessionSalt = null;
 
-	/**
-	 * Define a chave e o salt da sessão atual.
-	 */
-	public static void setSessionKeyAndSalt(String key, String salt) {
-		sessionKey = key;
+	public static void setSessionKeyAndSalt(String chave, String salt) {
+		sessionKey = chave;
 		sessionSalt = salt;
 	}
 
@@ -45,26 +42,23 @@ public class EncryptionService {
 		return getSecretKey(sessionKey, sessionSalt);
 	}
 
-	/**
-	 * Limpa a chave e o salt da sessão da memória.
-	 */
 	public static void clearSessionKeyAndSalt() {
 		sessionKey = null;
 		sessionSalt = null;
 	}
 
-	// Chamado automaticamente ao encerrar a JVM para limpar dados sensíveis da memória
+	// Chamada automática no encerramento da JVM para limpar dados sensíveis da memória
 	static {
 		Runtime.getRuntime().addShutdownHook(new Thread(EncryptionService::clearSessionKeyAndSalt));
 	}
 
 	/**
-	 * Gera uma chave secreta a partir de uma senha e um salt usando PBKDF2 com HMAC SHA-256.
+	 * Gera uma SecretKey a partir de uma senha e um salt, usando PBKDF2 com HMAC SHA-256.
 	 *
-	 * @param password a senha usada para derivar a chave
-	 * @param salt     o salt como string
-	 * @return uma chave secreta adequada para criptografia AES
-	 * @throws Exception se ocorrer erro na geração da chave
+	 * @param password A senha usada para derivar a chave
+	 * @param salt     O salt como string
+	 * @return Uma chave secreta adequada para criptografia AES
+	 * @throws Exception Se a geração da chave falhar
 	 */
 	public static SecretKey getSecretKey(String password, String salt) throws Exception {
 		byte[] saltBytes = salt.getBytes();
@@ -75,17 +69,17 @@ public class EncryptionService {
 	}
 
 	/**
-	 * Criptografa uma string em texto puro usando AES/GCM/NoPadding.
-	 * Um IV aleatório é gerado e adicionado ao início dos dados criptografados.
-	 * O resultado é codificado em Base64.
+	 * Criptografa uma string de texto usando AES/GCM/NoPadding.
+	 * Um IV (vetor de inicialização) aleatório é gerado e adicionado aos dados criptografados.
+	 * O resultado final é codificado em Base64.
 	 *
-	 * @param strToEncrypt string em texto puro a ser criptografada
-	 * @return string codificada em Base64 contendo IV + dados criptografados
-	 * @throws Exception se ocorrer falha na criptografia
+	 * @param strToEncrypt Texto em formato string a ser criptografado
+	 * @return String codificada em Base64 contendo IV + dados criptografados
+	 * @throws Exception Se a criptografia falhar
 	 */
 	public static String encrypt(String strToEncrypt) throws Exception {
 		if (strToEncrypt == null) {
-			throw new NullPointerException("A entrada para criptografia não pode ser nula");
+			throw new NullPointerException("O texto a ser criptografado não pode ser nulo");
 		}
 		SecretKey key = getSessionSecretKey();
 		Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
@@ -102,18 +96,18 @@ public class EncryptionService {
 	}
 
 	/**
-	 * Descriptografa uma string codificada em Base64 contendo um IV de 12 bytes no início dos dados criptografados.
+	 * Descriptografa uma string codificada em Base64 contendo um IV de 12 bytes seguido dos dados criptografados.
 	 *
-	 * @param strToDecrypt string codificada em Base64 contendo IV + dados criptografados
-	 * @return string original em texto puro
-	 * @throws Exception se ocorrer falha na descriptografia
+	 * @param strToDecrypt String codificada em Base64 com IV + dados criptografados
+	 * @return A string de texto descriptografada
+	 * @throws Exception Se a descriptografia falhar
 	 */
 	public static String decrypt(String strToDecrypt) throws Exception {
 		try {
 			SecretKey key = getSessionSecretKey();
 			byte[] encryptedIvTextBytes = Base64.getDecoder().decode(strToDecrypt);
 			if (encryptedIvTextBytes.length < 13) {
-				throw new IllegalArgumentException("Tamanho da entrada criptografada inválido");
+				throw new IllegalArgumentException("Comprimento da entrada criptografada é inválido");
 			}
 			byte[] iv = new byte[12];
 			System.arraycopy(encryptedIvTextBytes, 0, iv, 0, iv.length);
@@ -130,22 +124,21 @@ public class EncryptionService {
 	}
 
 	/**
-	 * Utilitário para gerar ou carregar um salt persistente para uso com PBKDF2.
+	 * Utilitário para gerar ou carregar um salt persistente para o PBKDF2.
 	 *
-	 * @return o salt como string (codificado em Base64)
-	 * @throws Exception se ocorrer falha na leitura ou gravação do salt
+	 * @return Uma string Base64 contendo o salt.
+	 * @throws Exception Se houver falha na leitura ou escrita do arquivo de salt.
 	 */
 	public static String getOrCreatePersistentSalt() throws Exception {
-		java.nio.file.Path saltPath = java.nio.file.Paths.get("encryption_salt.dat");
+		java.nio.file.Path saltPath = java.nio.file.Paths.get("encryption_salt.dat"); // Nome do arquivo de salt
 		if (java.nio.file.Files.exists(saltPath)) {
 			return java.nio.file.Files.readString(saltPath).trim();
 		}
-		// Gera novo salt aleatório (16 bytes codificados em base64)
+		// Gera um novo salt aleatório (16 bytes, codificado em Base64)
 		byte[] saltBytes = new byte[16];
 		new SecureRandom().nextBytes(saltBytes);
 		String salt = Base64.getEncoder().encodeToString(saltBytes);
 		java.nio.file.Files.writeString(saltPath, salt);
 		return salt;
 	}
-
 }

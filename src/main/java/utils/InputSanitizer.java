@@ -2,48 +2,49 @@ package utils;
 
 public class InputSanitizer {
     /**
-     * Construtor privado para evitar que a classe seja instanciada.
+     * Construtor privado para evitar instanciamento.
      */
     private InputSanitizer() {
-        // Classe utilitária, não deve ser criada como objeto
+        // Classe utilitária, não deve ser instanciada
     }
 
     /**
-     * Limpa a entrada do usuário para evitar possíveis ataques, como injeção de código.
+     * Sanitiza a entrada fornecida pelo usuário para prevenir possíveis ataques de injeção.
      *
-     * @param input           Texto digitado pelo usuário.
-     * @param maxLength       Tamanho máximo permitido para o texto.
-     * @param numericOnly     Define se a entrada deve conter apenas números.
-     * @return Texto limpo e seguro.
-     * @throws IllegalArgumentException Se a entrada for nula, inválida ou perigosa.
+     * @param input           A entrada bruta do usuário.
+     * @param maxLength       O comprimento máximo permitido da entrada.
+     * @param numericOnly     Se deve permitir apenas números.
+     * @return A entrada do usuário sanitizada e segura.
+     * @throws IllegalArgumentException Se a entrada for nula, inválida ou insegura.
      */
     public static String sanitize(String input, int maxLength, boolean numericOnly) throws IllegalArgumentException {
         if (input == null) {
-            throw new IllegalArgumentException("O texto não pode ser nulo.");
+            throw new IllegalArgumentException("A entrada não pode ser nula.");
         }
-        input = input.trim(); // remove espaços extras no início e fim
+        input = input.trim();
         if (input.isEmpty() || input.length() > maxLength) {
-            throw new IllegalArgumentException("O texto está vazio ou ultrapassa o limite permitido.");
+            throw new IllegalArgumentException("A entrada é inválida ou excede o comprimento permitido.");
         }
         if (numericOnly && !input.matches("\\d+")) {
-            throw new IllegalArgumentException("O texto deve conter apenas números.");
+            throw new IllegalArgumentException("A entrada deve conter apenas caracteres numéricos.");
         }
-        if (!numericOnly && input.indexOf(';') >= 0 || 
-                    input.indexOf('\'') >= 0 ||
-                    input.indexOf('"') >= 0 ||
-                    input.indexOf('<') >= 0 ||
-                    input.indexOf('>') >= 0 ||
-                    input.indexOf(',') >= 0) {
-            throw new IllegalArgumentException("O texto contém caracteres perigosos.");
+        if (!numericOnly && (
+                input.indexOf(';') >= 0 || 
+                input.indexOf('\'') >= 0 ||
+                input.indexOf('"') >= 0 ||
+                input.indexOf('<') >= 0 ||
+                input.indexOf('>') >= 0 ||
+                input.indexOf(',') >= 0)) {
+            throw new IllegalArgumentException("A entrada contém caracteres inseguros.");
         }
         return input;
     }
 
     /**
-     * Converte caracteres especiais para que o texto possa ser registrado em logs com segurança.
+     * Escapa entradas potencialmente inseguras para registro seguro (log).
      *
-     * @param input Texto fornecido pelo usuário.
-     * @return Texto com os caracteres perigosos convertidos.
+     * @param input A entrada fornecida pelo usuário.
+     * @return Entrada com caracteres inseguros escapados.
      */
     public static String escapeForLog(String input) {
         if (input == null) {
